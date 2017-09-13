@@ -7,5 +7,11 @@
 	<Label Text="Welcome to Xamarin Forms!" 
            VerticalOptions="Center" 
            HorizontalOptions="Center" />
-
+    <ListView x:Name="BlueToothView">
+        <ListView.ItemTemplate>
+            <DataTemplate>
+                <TextCell Text="{Binding DisplayName}" />
+            </DataTemplate>
+        </ListView.ItemTemplate>
+    </ListView>
 </ContentPage>
