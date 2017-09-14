@@ -3,15 +3,32 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:local="clr-namespace:JTCommonTest"
              x:Class="JTCommonTest.MainPage">
-
-	<Label Text="Welcome to Xamarin Forms!" 
-           VerticalOptions="Center" 
-           HorizontalOptions="Center" />
-    <ListView x:Name="BlueToothView">
-        <ListView.ItemTemplate>
-            <DataTemplate>
-                <TextCell Text="{Binding DisplayName}" />
-            </DataTemplate>
-        </ListView.ItemTemplate>
-    </ListView>
+    <ContentPage.Padding>
+        <OnPlatform 
+            x:TypeArguments="Thickness"
+            iOS="20,30,20,10"
+            Android="10"/>
+    </ContentPage.Padding>
+    <ContentPage.Content>
+        <StackLayout>
+            <Button
+                Clicked="OnButtonClicked"
+                BackgroundColor="Navy"
+                BorderRadius="25"
+                HeightRequest="50"
+                FontAttributes="Bold"
+                IsEnabled="{Binding IsEnabled, Mode=TwoWay}"
+                Text="Test"
+                TextColor="White">
+            </Button>
+            
+            <ListView x:Name="BlueToothView">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <TextCell Text="{Binding DisplayName}" />
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+        </StackLayout>
+    </ContentPage.Content>
 </ContentPage>
