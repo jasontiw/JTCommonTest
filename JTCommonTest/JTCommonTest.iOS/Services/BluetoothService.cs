@@ -12,6 +12,7 @@ namespace JTCommonTest.iOS.Services
     using Foundation;
     using JTCommonTest.Interfaces;
     using System.Text;
+    using System.Collections.Generic;
 
     public class BluetoothService :  IBluetooth ,IDisposable
     {
@@ -97,7 +98,7 @@ namespace JTCommonTest.iOS.Services
             return this.manager.RetrieveConnectedPeripherals(new[] { CBUUID.FromString(serviceUuid) });
         }
 
-        public async Task<CBService> GetService(CBPeripheral peripheral, string serviceUuid)
+        public async Task<IEnumerable<CBService>> GetService(CBPeripheral peripheral, string serviceUuid)
         {
             var service = this.GetServiceIfDiscovered(peripheral, serviceUuid);
             if (service != null)
@@ -111,14 +112,14 @@ namespace JTCommonTest.iOS.Services
             {
                 if (this.GetServiceIfDiscovered(peripheral, serviceUuid) != null)
                 {
-                    taskCompletion.SetResult(true);
+                    //taskCompletion.SetResult(true);
                 }
-            };
+            };  
 
             try
             {
                 peripheral.DiscoveredService += handler;
-                peripheral.DiscoverServices(new[] { CBUUID.FromString(serviceUuid) });
+                peripheral.DiscoverServices();
                 await this.WaitForTaskWithTimeout(task, ConnectionTimeout);
                 return this.GetServiceIfDiscovered(peripheral, serviceUuid);
             }
@@ -128,11 +129,12 @@ namespace JTCommonTest.iOS.Services
             }
         }
 
-        public CBService GetServiceIfDiscovered(CBPeripheral peripheral, string serviceUuid)
+        public IEnumerable<CBService> GetServiceIfDiscovered(CBPeripheral peripheral, string serviceUuid)
         {
             serviceUuid = serviceUuid.ToLowerInvariant();
-            return peripheral.Services
-                ?.FirstOrDefault(x => x.UUID?.Uuid?.ToLowerInvariant() == serviceUuid);
+            return peripheral.Services;
+            //return peripheral.Services
+            //    ?.FirstOrDefault(x => x.UUID?.Uuid?.ToLowerInvariant() == serviceUuid);
         }
 
         public async Task<CBCharacteristic[]> GetCharacteristics(CBPeripheral peripheral, CBService service, int scanTime)
@@ -223,29 +225,34 @@ namespace JTCommonTest.iOS.Services
             if (peripheral.Name?.Contains(DeviceName) == true)
             {
                 try
-                {
-                 
-
+                {                 
                     await this.ConnectTo(peripheral);
 
-                    var service = await this.GetService(peripheral, GATTServices);
-                    if (service != null)
+                    var services = await this.GetService(peripheral, GATTServices);
+                    if (services != null)
                     {
-                        var characteristics = await this.GetCharacteristics(peripheral, service, ScanTime);
-                        foreach (var characteristic in characteristics)
+                        foreach (var service in services)
                         {
-                            Debug.WriteLine($" Find characteristic {characteristic.UUID.Description}");
-                            //var value = await this.ReadValue(peripheral, characteristic);
-                            //byte[] bufferToPrint = Encoding.ASCII.GetBytes("Hola");
-                            NSData data = NSData.FromString("A0");
-                            
-                            //NSData data = NSData.FromArray(bufferToPrint);
-                            //peripheral.WriteValue(data,null);
+                            var characteristics = await this.GetCharacteristics(peripheral, service, ScanTime);
+                            foreach (var characteristic in characteristics)
+                            {
+                                Debug.WriteLine($" Find characteristic {characteristic.UUID.Description}");
+                                
+                                UTF8Encoding utf8 = new UTF8Encoding();
+                                byte[] encodedBytes = utf8.GetBytes("Hello World");
+                                string message = encodedBytes.ToString();
+                                NSData data = NSData.FromString(message);                                
+                                try
+                                {
 
-
-                            await this.WriteValue(peripheral, characteristic, data);
-                            //Debug.WriteLine($"{characteristic.UUID.Description} = {value}");
-                        }
+                                    await this.WriteValue(peripheral, characteristic, data);
+                                }
+                                catch (Exception e)
+                                {
+                                    // Maybe characteristic is not writable
+                                }
+                            }
+                        }                        
                     }
                 }
                 catch (Exception ex)
