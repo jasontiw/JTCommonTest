@@ -16,15 +16,11 @@ namespace JTCommonTest.iOS.Services
 
     public class BluetoothService :  IBluetooth ,IDisposable
     {
-        private const int ConnectionTimeout = 10000;
+        private const int ConnectionTimeout = 1000;
         private readonly CBCentralManager manager = new CBCentralManager();
         private string DeviceName = "Printer";
-        public int ScanTime = 5000;
-        string GATTServices = "180A"; //https://www.bluetooth.com/specifications/gatt/services
-
-        //string GATTServices = "180A";
-        //public EventHandler<CBPeripheral> DiscoveredDevice;
-        //public EventHandler<CBCentralManagerState> StateChanged;
+        private int ScanTime = 500;
+        string GATTServices = "180A"; //https://www.bluetooth.com/specifications/gatt/services        
 
         public BluetoothService()
         {
@@ -38,6 +34,11 @@ namespace JTCommonTest.iOS.Services
             this.manager.DiscoveredPeripheral -= this.DiscoveredPeripheral;
             this.manager.UpdatedState -= this.UpdatedState;
             this.StopScan();
+        }
+
+        public async Task Print(List<string> hashd, int scanDuration)
+        {
+            await this.Scan(scanDuration);
         }
 
         public async Task Scan(int scanDuration, string serviceUuid = "")
