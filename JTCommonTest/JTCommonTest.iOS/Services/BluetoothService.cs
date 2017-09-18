@@ -78,10 +78,6 @@ namespace JTCommonTest.iOS.Services
                 this.manager.ConnectPeripheral(peripheral);
                 await this.WaitForTaskWithTimeout(task, ConnectionTimeout);
                 Debug.WriteLine($"Bluetooth device connected = {peripheral.Name}");
-                //byte[] bufferToPrint = Encoding.ASCII.GetBytes("Hola");
-                //NSData data = NSData.FromArray(bufferToPrint);
-                //peripheral.WriteValue(data,null);
-
             }
             finally
             {
@@ -203,6 +199,7 @@ namespace JTCommonTest.iOS.Services
 
         public async Task<NSError> WriteValue(CBPeripheral peripheral, CBCharacteristic characteristic, NSData value)
         {
+            
             var taskCompletion = new TaskCompletionSource<NSError>();
             var task = taskCompletion.Task;
             EventHandler<CBCharacteristicEventArgs> handler = (s, e) =>
@@ -216,10 +213,11 @@ namespace JTCommonTest.iOS.Services
             try
             {
                 peripheral.WroteCharacteristicValue += handler;                
-                peripheral.WriteValue(value, characteristic, CBCharacteristicWriteType.WithoutResponse);
-                                
+                peripheral.WriteValue(value, characteristic, CBCharacteristicWriteType.WithResponse);
+                peripheral.WriteValue(NSData.FromArray(new byte[] { 10 }), characteristic, CBCharacteristicWriteType.WithoutResponse);                
                 await this.WaitForTaskWithTimeout(task, ConnectionTimeout);
-                return task.Result;
+              
+                return await task;
             }
             finally
             {
@@ -257,32 +255,43 @@ namespace JTCommonTest.iOS.Services
             if (peripheral.Name?.Contains(DeviceName) == true)
             {
                 try
-                {                 
+                {
                     await this.ConnectTo(peripheral);
+
+                    var taskCompletion = new TaskCompletionSource<bool>();
+                    var task = taskCompletion.Task;
 
                     var services = await this.GetService(peripheral, GATTServices);
                     if (services != null)
                     {
+                        bool continueIteration = true;
                         foreach (var service in services)
                         {
                             var characteristics = await this.GetCharacteristics(peripheral, service, ScanTime);
+
                             foreach (var characteristic in characteristics)
                             {
                                 Debug.WriteLine($" Find characteristic {characteristic.UUID.Description}");
-                                
-                                NSData data = NSData.FromString("Hello World");                                
-                                try
+                                List<string> prueba = new List<string>();
+                                prueba.Add(".......");
+                                prueba.Add("       ");
+                                prueba.Add("Hola   ");
+                                prueba.Add("       ");
+                                prueba.Add("Mundo   ");
+                                prueba.Add("       ");
+                                prueba.Add(".......");
+                                NSError error = null;
+                                foreach (var item in prueba)
                                 {
-
-                                    //await this.WriteValue(peripheral, characteristic, data);
-                                    peripheral.WriteValue(data, characteristic, CBCharacteristicWriteType.WithoutResponse);
+                                    error = await WriteValue(peripheral, characteristic, NSData.FromString(item));
+                                    continueIteration = !string.IsNullOrEmpty(error?.LocalizedDescription);                                 
                                 }
-                                catch (Exception e)
+                                if (!continueIteration)
                                 {
-                                    // Maybe characteristic is not writable
+                                    throw new InvalidOperationException(error?.LocalizedDescription);
                                 }
-                            }
-                        }                        
+                            }                            
+                        }
                     }
                 }
                 catch (Exception ex)
