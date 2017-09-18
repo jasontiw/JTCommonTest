@@ -42,6 +42,7 @@ namespace JTCommonTest.iOS.Services
 
         public async Task Scan(int scanDuration, string serviceUuid = "")
         {
+            ScanTime = scanDuration;
             Debug.WriteLine("Scanning started");
             var uuids = string.IsNullOrEmpty(serviceUuid)
                 ? new CBUUID[0]
@@ -110,9 +111,9 @@ namespace JTCommonTest.iOS.Services
             var task = taskCompletion.Task;
             EventHandler<NSErrorEventArgs> handler = (s, e) =>
             {
-                if (this.GetServiceIfDiscovered(peripheral, serviceUuid) != null)
+                if (this.GetServiceIfDiscovered(peripheral, serviceUuid)?.Any() == true)
                 {
-                    //taskCompletion.SetResult(true);
+                    taskCompletion.SetResult(true);
                 }
             };  
 
@@ -137,10 +138,40 @@ namespace JTCommonTest.iOS.Services
             //    ?.FirstOrDefault(x => x.UUID?.Uuid?.ToLowerInvariant() == serviceUuid);
         }
 
-        public async Task<CBCharacteristic[]> GetCharacteristics(CBPeripheral peripheral, CBService service, int scanTime)
+        public IEnumerable<CBCharacteristic> GetCharacteristicIfDiscovered(CBService service, string serviceUuid)
         {
+            serviceUuid = serviceUuid.ToLowerInvariant();
+            return service.Characteristics;            
+        }
+
+        public async Task<IEnumerable<CBCharacteristic>> GetCharacteristics(CBPeripheral peripheral, CBService service, int scanTime)
+        {
+            //peripheral.DiscoverCharacteristics(service);
+            //peripheral.DiscoveredCharacteristic
+            //await Task.Delay(scanTime);
+
+            var taskCompletion = new TaskCompletionSource<bool>();
+            var task = taskCompletion.Task;
+
             peripheral.DiscoverCharacteristics(service);
-            await Task.Delay(scanTime);
+
+            EventHandler<CBServiceEventArgs> handler =  (s, e)  =>
+            {                    
+                if (GetCharacteristicIfDiscovered(e.Service,"").Any())
+                {
+                    taskCompletion.SetResult(true);
+                }                
+            };
+            try
+            {
+                peripheral.DiscoveredCharacteristic += handler;
+                await this.WaitForTaskWithTimeout(task, ConnectionTimeout);
+            }
+            finally
+            {
+                peripheral.DiscoveredCharacteristic -= handler;
+            }
+
             return service.Characteristics;
         }
 
@@ -238,14 +269,12 @@ namespace JTCommonTest.iOS.Services
                             {
                                 Debug.WriteLine($" Find characteristic {characteristic.UUID.Description}");
                                 
-                                UTF8Encoding utf8 = new UTF8Encoding();
-                                byte[] encodedBytes = utf8.GetBytes("Hello World");
-                                string message = encodedBytes.ToString();
-                                NSData data = NSData.FromString(message);                                
+                                NSData data = NSData.FromString("Hello World");                                
                                 try
                                 {
 
-                                    await this.WriteValue(peripheral, characteristic, data);
+                                    //await this.WriteValue(peripheral, characteristic, data);
+                                    peripheral.WriteValue(data, characteristic, CBCharacteristicWriteType.WithoutResponse);
                                 }
                                 catch (Exception e)
                                 {
@@ -282,6 +311,7 @@ namespace JTCommonTest.iOS.Services
 
         private async Task WaitForTaskWithTimeout(Task task, int timeout)
         {
+            //await Task.WhenAny(task, Task.Delay(ConnectionTimeout));
             await Task.WhenAny(task, Task.Delay(ConnectionTimeout));
             if (!task.IsCompleted)
             {

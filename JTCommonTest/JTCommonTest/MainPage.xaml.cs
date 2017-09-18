@@ -24,7 +24,7 @@ namespace JTCommonTest
             BlueToothView.ItemsSource = bluetooh;
 
             BluetoothService = DependencyService.Get<IBluetooth>();
-            BluetoothService.Scan(5000);
+            BluetoothService.Scan(500);
 
 
             //var adapterStatus = CrossBleAdapter.Current.Status;
